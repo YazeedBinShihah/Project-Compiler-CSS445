@@ -1,0 +1,201 @@
+package Part1;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+class Token {
+    String type;
+    String value;
+
+    public Token(String type, String value) {
+        this.type = type;
+        this.value = value;
+    }
+
+    @Override
+    public String toString() {
+        return "(" + type + ", " + value + ")";
+    }
+}
+
+class Lexer {
+    private String text;
+    private int pos;
+    private char currentChar;
+
+    public Lexer(String text) {
+        this.text = text;
+        this.pos = 0;
+        if (text.length() > 0) {
+            this.currentChar = text.charAt(pos);
+        } else {
+            this.currentChar = '\0';
+        }
+    }
+
+    private void advance() {
+        pos++;
+        if (pos < text.length()) {
+            currentChar = text.charAt(pos);
+        } else {
+            currentChar = '\0'; // null character represents end of input
+        }
+    }
+
+    private void skipWhitespace() {
+        while (currentChar != '\0' && Character.isWhitespace(currentChar)) {
+            advance();
+        }
+    }
+
+    private Token number() {
+        StringBuilder result = new StringBuilder();
+        while (currentChar != '\0' && (Character.isDigit(currentChar) || currentChar == '.')) {
+            result.append(currentChar);
+            advance();
+        }
+        return new Token("NUMBER", result.toString());
+    }
+
+    private Token identifier() {
+    StringBuilder result = new StringBuilder();
+    while (currentChar != '\0' && (Character.isLetter(currentChar) && Character.UnicodeBlock.of(currentChar) == Character.UnicodeBlock.BASIC_LATIN
+                                    || Character.isDigit(currentChar) || currentChar == '_')) {
+        result.append(currentChar);
+        advance();
+    }
+    if (result.length() == 0) {
+        throw new IllegalArgumentException("Invalid identifier: " + currentChar);
+    }
+    return new Token("IDENTIFIER", result.toString());
+}
+
+
+    private Token operator() {
+        char op = currentChar;
+        advance();
+        return new Token("OPERATOR", Character.toString(op));
+    }
+
+    public List<Token> tokenize(Map<String, Double> symbolTable) {
+        List<Token> tokens = new ArrayList<>();
+        while (currentChar != '\0') {
+            skipWhitespace();
+            if (Character.isDigit(currentChar)) {
+                tokens.add(number());
+            } else if (Character.isLetter(currentChar) || currentChar == '_') {
+                Token token = identifier();
+                if (symbolTable.containsKey(token.value)) {
+                    tokens.add(new Token("IDENTIFIER", token.value));
+                } else {
+                    tokens.add(token);
+                    symbolTable.put(token.value, null);
+                }
+            } else if ("+-*/()=".indexOf(currentChar) != -1) {
+                tokens.add(operator());
+            } else {
+                throw new IllegalArgumentException("Invalid character: " + currentChar);
+            }
+        }
+        return tokens;
+    }
+}
+
+class Proj_part1 {
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            JFrame frame = new JFrame("Lexical Analyzer");
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            frame.setIconImage(new ImageIcon("icon.png").getImage());
+            frame.setLayout(new BorderLayout());
+
+            JTextArea inputTextArea = new JTextArea(10, 30);
+            JTextArea outputTextArea = new JTextArea(10, 30);
+            outputTextArea.setEditable(false);
+
+            JButton analyzeButton = new JButton("Lexical Analyzer");
+            JButton clearButton = new JButton("Clear");
+
+            // Customizing colors
+            Color backgroundColor = new Color(250, 250, 250);
+            Color foregroundColor = Color.BLACK;
+            Color buttonBackgroundColor = new Color(55, 122, 255); // Blue
+            Color buttonForegroundColor = Color.WHITE;
+
+            inputTextArea.setBackground(backgroundColor);
+            inputTextArea.setForeground(foregroundColor);
+            outputTextArea.setBackground(backgroundColor);
+            outputTextArea.setForeground(foregroundColor);
+            analyzeButton.setBackground(buttonBackgroundColor);
+            analyzeButton.setForeground(buttonForegroundColor);
+            clearButton.setBackground(buttonBackgroundColor);
+            clearButton.setForeground(buttonForegroundColor);
+
+            JPanel inputPanel = new JPanel();
+            inputPanel.setLayout(new BorderLayout());
+            inputPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+            inputPanel.setBackground(backgroundColor);
+            inputPanel.add(new JScrollPane(inputTextArea), BorderLayout.CENTER);
+
+            JPanel outputPanel = new JPanel();
+            outputPanel.setLayout(new BorderLayout());
+            outputPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+            outputPanel.setBackground(backgroundColor);
+            outputPanel.add(new JScrollPane(outputTextArea), BorderLayout.CENTER);
+
+            JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
+            buttonPanel.setBackground(backgroundColor);
+            buttonPanel.add(analyzeButton);
+            buttonPanel.add(clearButton);
+
+            frame.add(inputPanel, BorderLayout.WEST);
+            frame.add(outputPanel, BorderLayout.CENTER);
+            frame.add(buttonPanel, BorderLayout.SOUTH);
+
+            analyzeButton.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    String input = inputTextArea.getText();
+                    if (input.trim().isEmpty()) {
+                        outputTextArea.setText("Error: Input text is empty.");
+                        return;
+                    }
+                    Map<String, Double> symbolTable = new HashMap<>();
+                    try {
+                        Lexer lexer = new Lexer(input);
+                        List<Token> tokens = lexer.tokenize(symbolTable);
+                        StringBuilder result = new StringBuilder();
+                        for (Token token : tokens) {
+                            result.append(token).append("\n");
+                        }
+                        result.append("\nSymbol Table:\n");
+                        for (Map.Entry<String, Double> entry : symbolTable.entrySet()) {
+                            result.append(entry.getKey()).append(" = ").append(entry.getValue()).append("\n");
+                        }
+                        outputTextArea.setText(result.toString());
+                    } catch (IllegalArgumentException ex) {
+                        outputTextArea.setText("Error: " + ex.getMessage());
+                    }
+                }
+            });
+
+            clearButton.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    inputTextArea.setText("");
+                    outputTextArea.setText("");
+                }
+            });
+
+            frame.pack();
+            frame.setLocationRelativeTo(null);
+            frame.setVisible(true);
+        });
+    }
+}

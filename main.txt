@@ -1,0 +1,10 @@
+
+package Part2;
+public class NewMain {
+
+    public static void main(String[] args) {
+                   new GUI1().setVisible(true);
+
+    }
+    
+}
